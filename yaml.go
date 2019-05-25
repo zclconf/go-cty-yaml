@@ -11,14 +11,14 @@ import (
 	"github.com/zclconf/go-cty/cty"
 )
 
-// Unmarshal reads the first document found within the given source buffer
+// Unmarshal reads thedocument found within the given source buffer
 // and attempts to convert it into a value conforming to the given type
 // constraint.
 //
 // This is an alias for Unmarshal on the predefined Converter in "Standard".
 //
-// An error is returned if the given source contains more than one YAML
-// document.
+// An error is returned if the given source contains any YAML document
+// delimiters.
 func Unmarshal(src []byte, ty cty.Type) (cty.Value, error) {
 	return Standard.Unmarshal(src, ty)
 }
