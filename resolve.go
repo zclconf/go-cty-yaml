@@ -2,15 +2,17 @@ package yaml
 
 import (
 	"encoding/base64"
-	"math"
+	"fmt"
 	"regexp"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/zclconf/go-cty/cty"
 )
 
 type resolveMapItem struct {
-	value interface{}
+	value cty.Value
 	tag   string
 }
 
@@ -30,22 +32,20 @@ func init() {
 	t[int('.')] = '.' // Float (potentially in map)
 
 	var resolveMapList = []struct {
-		v   interface{}
+		v   cty.Value
 		tag string
 		l   []string
 	}{
-		{true, yaml_BOOL_TAG, []string{"y", "Y", "yes", "Yes", "YES"}},
-		{true, yaml_BOOL_TAG, []string{"true", "True", "TRUE"}},
-		{true, yaml_BOOL_TAG, []string{"on", "On", "ON"}},
-		{false, yaml_BOOL_TAG, []string{"n", "N", "no", "No", "NO"}},
-		{false, yaml_BOOL_TAG, []string{"false", "False", "FALSE"}},
-		{false, yaml_BOOL_TAG, []string{"off", "Off", "OFF"}},
-		{nil, yaml_NULL_TAG, []string{"", "~", "null", "Null", "NULL"}},
-		{math.NaN(), yaml_FLOAT_TAG, []string{".nan", ".NaN", ".NAN"}},
-		{math.Inf(+1), yaml_FLOAT_TAG, []string{".inf", ".Inf", ".INF"}},
-		{math.Inf(+1), yaml_FLOAT_TAG, []string{"+.inf", "+.Inf", "+.INF"}},
-		{math.Inf(-1), yaml_FLOAT_TAG, []string{"-.inf", "-.Inf", "-.INF"}},
-		{"<<", yaml_MERGE_TAG, []string{"<<"}},
+		{cty.True, yaml_BOOL_TAG, []string{"y", "Y", "yes", "Yes", "YES"}},
+		{cty.True, yaml_BOOL_TAG, []string{"true", "True", "TRUE"}},
+		{cty.True, yaml_BOOL_TAG, []string{"on", "On", "ON"}},
+		{cty.False, yaml_BOOL_TAG, []string{"n", "N", "no", "No", "NO"}},
+		{cty.False, yaml_BOOL_TAG, []string{"false", "False", "FALSE"}},
+		{cty.False, yaml_BOOL_TAG, []string{"off", "Off", "OFF"}},
+		{cty.NullVal(cty.DynamicPseudoType), yaml_NULL_TAG, []string{"", "~", "null", "Null", "NULL"}},
+		{cty.PositiveInfinity, yaml_FLOAT_TAG, []string{".inf", ".Inf", ".INF"}},
+		{cty.PositiveInfinity, yaml_FLOAT_TAG, []string{"+.inf", "+.Inf", "+.INF"}},
+		{cty.NegativeInfinity, yaml_FLOAT_TAG, []string{"-.inf", "-.Inf", "-.INF"}},
 	}
 
 	m := resolveMap
@@ -75,7 +75,7 @@ func longTag(tag string) string {
 
 func resolvableTag(tag string) bool {
 	switch tag {
-	case "", yaml_STR_TAG, yaml_BOOL_TAG, yaml_INT_TAG, yaml_FLOAT_TAG, yaml_NULL_TAG, yaml_TIMESTAMP_TAG:
+	case "", yaml_STR_TAG, yaml_BOOL_TAG, yaml_INT_TAG, yaml_FLOAT_TAG, yaml_NULL_TAG, yaml_TIMESTAMP_TAG, yaml_BINARY_TAG:
 		return true
 	}
 	return false
@@ -83,47 +83,32 @@ func resolvableTag(tag string) bool {
 
 var yamlStyleFloat = regexp.MustCompile(`^[-+]?(\.[0-9]+|[0-9]+(\.[0-9]*)?)([eE][-+]?[0-9]+)?$`)
 
-func resolve(tag string, in string) (rtag string, out interface{}) {
+func (c *Converter) resolveScalar(tag string, src string) (cty.Value, error) {
 	if !resolvableTag(tag) {
-		return tag, in
+		return cty.NilVal, fmt.Errorf("unsupported tag %q", tag)
 	}
-
-	defer func() {
-		switch tag {
-		case "", rtag, yaml_STR_TAG, yaml_BINARY_TAG:
-			return
-		case yaml_FLOAT_TAG:
-			if rtag == yaml_INT_TAG {
-				switch v := out.(type) {
-				case int64:
-					rtag = yaml_FLOAT_TAG
-					out = float64(v)
-					return
-				case int:
-					rtag = yaml_FLOAT_TAG
-					out = float64(v)
-					return
-				}
-			}
-		}
-		failf("cannot decode %s `%s` as a %s", shortTag(rtag), in, shortTag(tag))
-	}()
+	var rtag string
 
 	// Any data is accepted as a !!str or !!binary.
 	// Otherwise, the prefix is enough of a hint about what it might be.
 	hint := byte('N')
-	if in != "" {
-		hint = resolveTable[in[0]]
+	if src != "" {
+		hint = resolveTable[src[0]]
 	}
 	if hint != 0 && tag != yaml_STR_TAG && tag != yaml_BINARY_TAG {
 		// Handle things we can lookup in a map.
-		if item, ok := resolveMap[in]; ok {
-			return item.tag, item.value
+		if item, ok := resolveMap[src]; ok {
+			return item.value, nil
 		}
 
-		// Base 60 floats are a bad idea, were dropped in YAML 1.2, and
-		// are purposefully unsupported here. They're still quoted on
-		// the way out for compatibility with other parser, though.
+		for _, nan := range []string{".nan", ".NaN", ".NAN"} {
+			if src == nan {
+				// cty cannot represent NaN, so this is an error
+				return cty.NilVal, fmt.Errorf("floating point NaN is not supported")
+			}
+		}
+
+		// Base 60 floats are intentionally not supported.
 
 		switch hint {
 		case 'M':
@@ -131,9 +116,8 @@ func resolve(tag string, in string) (rtag string, out interface{}) {
 
 		case '.':
 			// Not in the map, so maybe a normal float.
-			floatv, err := strconv.ParseFloat(in, 64)
-			if err == nil {
-				return yaml_FLOAT_TAG, floatv
+			if numberVal, err := cty.ParseNumberVal(src); err == nil {
+				return numberVal, nil
 			}
 
 		case 'D', 'S':
@@ -141,59 +125,90 @@ func resolve(tag string, in string) (rtag string, out interface{}) {
 			// Only try values as a timestamp if the value is unquoted or there's an explicit
 			// !!timestamp tag.
 			if tag == "" || tag == yaml_TIMESTAMP_TAG {
-				t, ok := parseTimestamp(in)
+				t, ok := parseTimestamp(src)
 				if ok {
-					return yaml_TIMESTAMP_TAG, t
+					// cty has no timestamp type, but its functions stdlib
+					// conventionally uses strings in an RFC3339 encoding
+					// to represent time, so we'll follow that convention here.
+					return cty.StringVal(t.Format(time.RFC3339)), nil
 				}
 			}
 
-			plain := strings.Replace(in, "_", "", -1)
-			intv, err := strconv.ParseInt(plain, 0, 64)
-			if err == nil {
-				if intv == int64(int(intv)) {
-					return yaml_INT_TAG, int(intv)
-				} else {
-					return yaml_INT_TAG, intv
-				}
+			plain := strings.Replace(src, "_", "", -1)
+			if numberVal, err := cty.ParseNumberVal(plain); err == nil {
+				return numberVal, nil
 			}
-			uintv, err := strconv.ParseUint(plain, 0, 64)
-			if err == nil {
-				return yaml_INT_TAG, uintv
-			}
-			if yamlStyleFloat.MatchString(plain) {
-				floatv, err := strconv.ParseFloat(plain, 64)
-				if err == nil {
-					return yaml_FLOAT_TAG, floatv
-				}
-			}
-			if strings.HasPrefix(plain, "0b") {
-				intv, err := strconv.ParseInt(plain[2:], 2, 64)
-				if err == nil {
-					if intv == int64(int(intv)) {
-						return yaml_INT_TAG, int(intv)
-					} else {
-						return yaml_INT_TAG, intv
-					}
-				}
-				uintv, err := strconv.ParseUint(plain[2:], 2, 64)
-				if err == nil {
-					return yaml_INT_TAG, uintv
-				}
-			} else if strings.HasPrefix(plain, "-0b") {
-				intv, err := strconv.ParseInt("-"+plain[3:], 2, 64)
-				if err == nil {
-					if true || intv == int64(int(intv)) {
-						return yaml_INT_TAG, int(intv)
-					} else {
-						return yaml_INT_TAG, intv
-					}
-				}
+			if strings.HasPrefix(plain, "0b") || strings.HasPrefix(plain, "-0b") {
+				tag = yaml_INT_TAG // will handle parsing below in our tag switch
 			}
 		default:
-			panic("resolveTable item not yet handled: " + string(rune(hint)) + " (with " + in + ")")
+			panic(fmt.Sprintf("cannot resolve tag %q with source %q", tag, src))
 		}
 	}
-	return yaml_STR_TAG, in
+
+	switch tag {
+	case yaml_STR_TAG, yaml_BINARY_TAG:
+		// If it's binary then we want to keep the base64 representation, because
+		// cty has no binary type, but we will check that it's actually base64.
+		if tag == yaml_BINARY_TAG {
+			_, err := base64.StdEncoding.DecodeString(src)
+			if err != nil {
+				return cty.NilVal, fmt.Errorf("cannot parse %q as %s: not valid base64", src, tag)
+			}
+		}
+		return cty.StringVal(src), nil
+	case yaml_BOOL_TAG:
+		item, ok := resolveMap[src]
+		if !ok || item.tag != yaml_BOOL_TAG {
+			return cty.NilVal, fmt.Errorf("cannot parse %q as %s", src, tag)
+		}
+		return item.value, nil
+	case yaml_FLOAT_TAG, yaml_INT_TAG:
+		// Note: We don't actually check that a value tagged INT is a whole
+		// number here. We could, but cty generally doesn't care about the
+		// int/float distinction, so we'll just be generous and accept it.
+		plain := strings.Replace(src, "_", "", -1)
+		if numberVal, err := cty.ParseNumberVal(plain); err == nil { // handles decimal integers and floats
+			return numberVal, nil
+		}
+		if intv, err := strconv.ParseInt(plain, 0, 64); err == nil { // handles 0x and 00 prefixes
+			return cty.NumberIntVal(intv), nil
+		}
+		if uintv, err := strconv.ParseUint(plain, 0, 64); err == nil { // handles 0x and 00 prefixes
+			return cty.NumberUIntVal(uintv), nil
+		}
+		if strings.HasPrefix(plain, "0b") {
+			intv, err := strconv.ParseInt(plain[2:], 2, 64)
+			if err == nil {
+				return cty.NumberIntVal(intv), nil
+			}
+			uintv, err := strconv.ParseUint(plain[2:], 2, 64)
+			if err == nil {
+				return cty.NumberUIntVal(uintv), nil
+			}
+		} else if strings.HasPrefix(plain, "-0b") {
+			intv, err := strconv.ParseInt("-"+plain[3:], 2, 64)
+			if err == nil {
+				return cty.NumberIntVal(intv), nil
+			}
+		}
+		return cty.NilVal, fmt.Errorf("cannot parse %q as %s", src, tag)
+	case yaml_TIMESTAMP_TAG:
+		t, ok := parseTimestamp(src)
+		if ok {
+			// cty has no timestamp type, but its functions stdlib
+			// conventionally uses strings in an RFC3339 encoding
+			// to represent time, so we'll follow that convention here.
+			return cty.StringVal(t.Format(time.RFC3339)), nil
+		}
+		return cty.NilVal, fmt.Errorf("cannot parse %q as %s", src, tag)
+	case yaml_NULL_TAG:
+		return cty.NullVal(cty.DynamicPseudoType), nil
+	case "":
+		return cty.StringVal(src), nil
+	default:
+		return cty.NilVal, fmt.Errorf("unsupported tag %q", tag)
+	}
 }
 
 // encodeBase64 encodes s as base64 that is broken up into multiple lines
