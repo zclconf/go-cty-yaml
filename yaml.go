@@ -11,7 +11,7 @@ import (
 	"github.com/zclconf/go-cty/cty"
 )
 
-// Unmarshal reads thedocument found within the given source buffer
+// Unmarshal reads the document found within the given source buffer
 // and attempts to convert it into a value conforming to the given type
 // constraint.
 //
@@ -44,11 +44,6 @@ func Marshal(v cty.Value) ([]byte, error) {
 // For a converter that is using standard YAML rather than cty-specific custom
 // tags, only a subset of cty types can be produced: strings, numbers, bools,
 // tuple types, and object types.
-//
-// If the given YAML was produced by Marshal using a type constraint containing
-// any cty.DynamicPseudoType, this function will misinterpret the dynamic
-// type information as a value. This function is intended for consuming YAML
-// produced outside of cty, without knowing its shape ahead of time.
 //
 // This is an alias for ImpliedType on the predefined Converter in "Standard".
 func ImpliedType(src []byte) (cty.Type, error) {

@@ -23,6 +23,7 @@ type Converter struct {
 	encodeAsFlow bool
 }
 
+// NewConverter creates a new Converter with the given configuration.
 func NewConverter(config *ConverterConfig) *Converter {
 	return &Converter{
 		encodeAsFlow: config.EncodeAsFlow,
@@ -34,6 +35,12 @@ func NewConverter(config *ConverterConfig) *Converter {
 // understand.
 var Standard *Converter = NewConverter(&ConverterConfig{})
 
+// ImpliedType analyzes the given source code and returns a suitable type that
+// it could be decoded into.
+//
+// For a converter that is using standard YAML rather than cty-specific custom
+// tags, only a subset of cty types can be produced: strings, numbers, bools,
+// tuple types, and object types.
 func (c *Converter) ImpliedType(src []byte) (cty.Type, error) {
 	return c.impliedType(src)
 }
@@ -51,6 +58,12 @@ func (c *Converter) Marshal(v cty.Value) ([]byte, error) {
 	return c.marshal(v)
 }
 
+// Unmarshal reads the document found within the given source buffer
+// and attempts to convert it into a value conforming to the given type
+// constraint.
+//
+// An error is returned if the given source contains any YAML document
+// delimiters.
 func (c *Converter) Unmarshal(src []byte, ty cty.Type) (cty.Value, error) {
 	return c.unmarshal(src, ty)
 }
