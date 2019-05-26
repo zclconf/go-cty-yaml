@@ -85,3 +85,13 @@ func parseEventErrorWrap(evt *yaml_event_t, cause error) error {
 func parseEventErrorf(evt *yaml_event_t, f string, vals ...interface{}) error {
 	return parseEventErrorWrap(evt, fmt.Errorf(f, vals...))
 }
+
+func emitterError(e *yaml_emitter_t) error {
+	var cause error
+	if len(e.problem) > 0 {
+		cause = errors.New(e.problem)
+	} else {
+		cause = errors.New("failed to write YAML token") // useless generic error, then
+	}
+	return cause
+}
