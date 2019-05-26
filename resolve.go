@@ -3,6 +3,7 @@ package yaml
 import (
 	"encoding/base64"
 	"fmt"
+	"reflect"
 	"regexp"
 	"strconv"
 	"strings"
@@ -100,10 +101,12 @@ func (c *Converter) resolveScalar(tag string, src string) (cty.Value, error) {
 			return item.value, nil
 		}
 
-		for _, nan := range []string{".nan", ".NaN", ".NAN"} {
-			if src == nan {
-				// cty cannot represent NaN, so this is an error
-				return cty.NilVal, fmt.Errorf("floating point NaN is not supported")
+		if tag == "" {
+			for _, nan := range []string{".nan", ".NaN", ".NAN"} {
+				if src == nan {
+					// cty cannot represent NaN, so this is an error
+					return cty.NilVal, fmt.Errorf("floating point NaN is not supported")
+				}
 			}
 		}
 
@@ -143,6 +146,10 @@ func (c *Converter) resolveScalar(tag string, src string) (cty.Value, error) {
 		default:
 			panic(fmt.Sprintf("cannot resolve tag %q with source %q", tag, src))
 		}
+	}
+
+	if tag == "" && src == "<<" {
+		return mergeMappingVal, nil
 	}
 
 	switch tag {
@@ -270,3 +277,8 @@ func parseTimestamp(s string) (time.Time, bool) {
 	}
 	return time.Time{}, false
 }
+
+type mergeMapping struct{}
+
+var mergeMappingTy = cty.Capsule("merge mapping", reflect.TypeOf(mergeMapping{}))
+var mergeMappingVal = cty.CapsuleVal(mergeMappingTy, &mergeMapping{})

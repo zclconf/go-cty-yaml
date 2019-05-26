@@ -105,6 +105,11 @@ func (c *Converter) unmarshalScalar(an *valueAnalysis, evt *yaml_event_t, p *yam
 		return cty.NilVal, parseEventErrorWrap(evt, err)
 	}
 
+	if val.RawEquals(mergeMappingVal) {
+		// In any context other than a mapping key, this is just a plain string
+		val = cty.StringVal("<<")
+	}
+
 	if len(anchor) > 0 {
 		an.completeAnchor(anchor, val)
 	}
@@ -143,6 +148,23 @@ func (c *Converter) unmarshalMapping(an *valueAnalysis, evt *yaml_event_t, p *ya
 		keyVal, err := c.resolveScalar(string(nextEvt.tag), string(nextEvt.value))
 		if err != nil {
 			return cty.NilVal, err
+		}
+		if keyVal.RawEquals(mergeMappingVal) {
+			// Merging the value (which must be a mapping) into our mapping,
+			// then.
+			val, err := c.unmarshalParse(an, p)
+			if err != nil {
+				return cty.NilVal, err
+			}
+			ty := val.Type()
+			if !(ty.IsObjectType() || ty.IsMapType()) {
+				return cty.NilVal, parseEventErrorf(&nextEvt, "cannot merge %s into mapping", ty.FriendlyName())
+			}
+			for it := val.ElementIterator(); it.Next(); {
+				k, v := it.Element()
+				vals[k.AsString()] = v
+			}
+			continue
 		}
 		if keyValStr, err := convert.Convert(keyVal, cty.String); err == nil {
 			keyVal = keyValStr

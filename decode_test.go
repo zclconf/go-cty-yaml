@@ -49,6 +49,13 @@ func TestUnmarshal(t *testing.T) {
 			cty.StringVal("hello"),
 			``,
 		},
+		"single string implied not merge": {
+			Standard,
+			`<<`,
+			cty.String,
+			cty.StringVal("<<"),
+			``,
+		},
 		"single string short tag": {
 			Standard,
 			`!!str true`,
@@ -254,7 +261,7 @@ b: true
 a: 1
 b:
   - foo
-  - bar
+  - <<
   - baz
 `,
 			cty.Object(map[string]cty.Type{
@@ -265,7 +272,7 @@ b:
 				"a": cty.NumberIntVal(1),
 				"b": cty.ListVal([]cty.Value{
 					cty.StringVal("foo"),
-					cty.StringVal("bar"),
+					cty.StringVal("<<"),
 					cty.StringVal("baz"),
 				}),
 			}),
@@ -297,7 +304,7 @@ b:
 			Standard,
 			`
 - a
-- b
+- <<
 - true
 `,
 			cty.Tuple([]cty.Type{
@@ -307,7 +314,7 @@ b:
 			}),
 			cty.TupleVal([]cty.Value{
 				cty.StringVal("a"),
-				cty.StringVal("b"),
+				cty.StringVal("<<"),
 				cty.True,
 			}),
 			``,
@@ -341,6 +348,27 @@ foo: &bar
 			cty.DynamicPseudoType,
 			cty.NilVal,
 			`on line 3, column 5: cannot refer to anchor "bar" from inside its own definition`,
+		},
+		"alias merge": {
+			Standard,
+			`
+foo: &bar
+  a: b
+bar:
+  <<: *bar
+  c: d
+`,
+			cty.Map(cty.Map(cty.String)),
+			cty.MapVal(map[string]cty.Value{
+				"foo": cty.MapVal(map[string]cty.Value{
+					"a": cty.StringVal("b"),
+				}),
+				"bar": cty.MapVal(map[string]cty.Value{
+					"a": cty.StringVal("b"),
+					"c": cty.StringVal("d"),
+				}),
+			}),
+			``,
 		},
 	}
 
