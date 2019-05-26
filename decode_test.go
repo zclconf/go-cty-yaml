@@ -370,6 +370,21 @@ bar:
 			}),
 			``,
 		},
+		"alias scalar": {
+			Standard,
+			`
+- &foo a
+- b
+- *foo
+`,
+			cty.List(cty.String),
+			cty.ListVal([]cty.Value{
+				cty.StringVal("a"),
+				cty.StringVal("b"),
+				cty.StringVal("a"),
+			}),
+			``,
+		},
 	}
 
 	for name, test := range tests {
