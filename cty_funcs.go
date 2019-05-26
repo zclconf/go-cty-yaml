@@ -31,3 +31,24 @@ var YAMLDecodeFunc = function.New(&function.Spec{
 		return Standard.Unmarshal([]byte(args[0].AsString()), retType)
 	},
 })
+
+// YAMLEncodeFunc is a cty function for encoding an arbitrary cty value
+// into YAML.
+var YAMLEncodeFunc = function.New(&function.Spec{
+	Params: []function.Parameter{
+		{
+			Name:             "value",
+			Type:             cty.DynamicPseudoType,
+			AllowNull:        true,
+			AllowDynamicType: true,
+		},
+	},
+	Type: function.StaticReturnType(cty.String),
+	Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
+		raw, err := Standard.Marshal(args[0])
+		if err != nil {
+			return cty.NilVal, err
+		}
+		return cty.StringVal(string(raw)), nil
+	},
+})
