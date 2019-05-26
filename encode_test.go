@@ -45,12 +45,12 @@ func TestMarshal(t *testing.T) {
 		{
 			Standard,
 			cty.PositiveInfinity,
-			"+Inf\n...\n",
+			"+.Inf\n...\n",
 		},
 		{
 			Standard,
 			cty.NegativeInfinity,
-			"-Inf\n...\n",
+			"-.Inf\n...\n",
 		},
 		{
 			Standard,
