@@ -34,6 +34,11 @@ func TestMarshal(t *testing.T) {
 		},
 		{
 			Standard,
+			cty.StringVal("hello\nworld"),
+			"|-\n  hello\n  world\n",
+		},
+		{
+			Standard,
 			cty.Zero,
 			"0\n...\n",
 		},

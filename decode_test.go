@@ -28,6 +28,20 @@ func TestUnmarshal(t *testing.T) {
 			cty.StringVal("hello"),
 			``,
 		},
+		"single string literal": {
+			Standard,
+			"|\n  hello\n  world",
+			cty.String,
+			cty.StringVal("hello\nworld"),
+			``,
+		},
+		"single string folded": {
+			Standard,
+			">\n  hello\n  world",
+			cty.String,
+			cty.StringVal("hello world"),
+			``,
+		},
 		"single string implied": {
 			Standard,
 			`hello`,
