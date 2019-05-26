@@ -23,13 +23,19 @@ func Unmarshal(src []byte, ty cty.Type) (cty.Value, error) {
 	return Standard.Unmarshal(src, ty)
 }
 
-// Marshal serializes the given value into a YAML document, using a structure
-// that would round-trip the value exactly if the same type constraint were
-// passed to Unmarshal later.
+// Marshal serializes the given value into a YAML document, using a fixed
+// mapping from cty types to YAML constructs.
 //
 // This is an alias for Marshal on the predefined Converter in "Standard".
-func Marshal(v cty.Value, ty cty.Type) ([]byte, error) {
-	return Standard.Marshal(v, ty)
+//
+// Note that unlike the function of the same name in the cty JSON package,
+// this does not take a type constraint and therefore the YAML serialization
+// cannot preserve late-bound type information in the serialization to be
+// recovered from Unmarshal. Instead, any cty.DynamicPseudoType in the type
+// constraint given to Unmarshal will be decoded as if the corresponding portion
+// of the input were processed with ImpliedType to find a target type.
+func Marshal(v cty.Value) ([]byte, error) {
+	return Standard.Marshal(v)
 }
 
 // ImpliedType analyzes the given source code and returns a suitable type that

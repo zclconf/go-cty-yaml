@@ -38,8 +38,17 @@ func (c *Converter) ImpliedType(src []byte) (cty.Type, error) {
 	return c.impliedType(src)
 }
 
-func (c *Converter) Marshal(v cty.Value, ty cty.Type) ([]byte, error) {
-	return c.marshal(v, ty)
+// Marshal serializes the given value into a YAML document, using a fixed
+// mapping from cty types to YAML constructs.
+//
+// Note that unlike the function of the same name in the cty JSON package,
+// this does not take a type constraint and therefore the YAML serialization
+// cannot preserve late-bound type information in the serialization to be
+// recovered from Unmarshal. Instead, any cty.DynamicPseudoType in the type
+// constraint given to Unmarshal will be decoded as if the corresponding portion
+// of the input were processed with ImpliedType to find a target type.
+func (c *Converter) Marshal(v cty.Value) ([]byte, error) {
+	return c.marshal(v)
 }
 
 func (c *Converter) Unmarshal(src []byte, ty cty.Type) (cty.Value, error) {
