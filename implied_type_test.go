@@ -31,6 +31,12 @@ func TestImpliedType(t *testing.T) {
 			cty.String,
 			``,
 		},
+		"single string implied not merge": {
+			Standard,
+			`<<`,
+			cty.String,
+			``,
+		},
 		"single string short tag": {
 			Standard,
 			`!!str true`,
@@ -231,7 +237,7 @@ b:
 			Standard,
 			`
 - a
-- b
+- <<
 - true
 `,
 			cty.Tuple([]cty.Type{
@@ -264,6 +270,40 @@ foo: &bar
 `,
 			cty.NilType,
 			`on line 3, column 5: cannot refer to anchor "bar" from inside its own definition`,
+		},
+		"alias merge": {
+			Standard,
+			`
+foo: &bar
+  a: b
+bar:
+  <<: *bar
+  c: d
+`,
+			cty.Object(map[string]cty.Type{
+				"foo": cty.Object(map[string]cty.Type{
+					"a": cty.String,
+				}),
+				"bar": cty.Object(map[string]cty.Type{
+					"a": cty.String,
+					"c": cty.String,
+				}),
+			}),
+			``,
+		},
+		"alias scalar": {
+			Standard,
+			`
+- &foo a
+- b
+- *foo
+`,
+			cty.Tuple([]cty.Type{
+				cty.String,
+				cty.String,
+				cty.String,
+			}),
+			``,
 		},
 	}
 
