@@ -1,4 +1,4 @@
-# 1.1.0 (Unreleased)
+# 1.0.1 (July 30, 2019)
 
 * The YAML decoder is now correctly treating quoted scalars as verbatim literal
   strings rather than using the fuzzy type selection rules for them. Fuzzy
