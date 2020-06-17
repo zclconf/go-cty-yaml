@@ -117,13 +117,13 @@ func TestImpliedType(t *testing.T) {
 		},
 		"single positive infinity implied": {
 			Standard,
-			`+Inf`,
+			`+.Inf`,
 			cty.Number,
 			``,
 		},
 		"single negative infinity implied": {
 			Standard,
-			`-Inf`,
+			`-.Inf`,
 			cty.Number,
 			``,
 		},
