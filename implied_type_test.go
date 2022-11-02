@@ -13,6 +13,18 @@ func TestImpliedType(t *testing.T) {
 		want      cty.Type
 		wantErr   string
 	}{
+		"only document separator": {
+			Standard,
+			`---`,
+			cty.DynamicPseudoType, // would decode as a null value of unknown type
+			``,
+		},
+		"null": {
+			Standard,
+			`~`,
+			cty.DynamicPseudoType, // would decode as a null value of unknown type
+			``,
+		},
 		"single string doublequote": {
 			Standard,
 			`"hello"`,

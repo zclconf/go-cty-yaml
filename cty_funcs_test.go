@@ -8,14 +8,36 @@ import (
 
 func TestYAMLDecodeFunc(t *testing.T) {
 	// FIXME: This is not a very extensive test.
-	got, err := YAMLDecodeFunc.Call([]cty.Value{
-		cty.StringVal("true"),
-	})
-	if err != nil {
-		t.Fatalf("unexpected error: %s", err)
+	tests := map[string]struct {
+		input string
+		want  cty.Value
+	}{
+		"only document separator": {
+			`---`,
+			cty.NullVal(cty.DynamicPseudoType),
+		},
+		"null": {
+			`~`,
+			cty.NullVal(cty.DynamicPseudoType),
+		},
+		"boolean true": {
+			`true`,
+			cty.True,
+		},
 	}
-	if want := cty.True; !want.RawEquals(got) {
-		t.Fatalf("wrong result\ngot:  %#v\nwant: %#v", got, want)
+
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
+			got, err := YAMLDecodeFunc.Call([]cty.Value{
+				cty.StringVal(test.input),
+			})
+			if err != nil {
+				t.Fatalf("unexpected error: %s", err)
+			}
+			if want := test.want; !want.RawEquals(got) {
+				t.Fatalf("wrong result\ngot:  %#v\nwant: %#v", got, want)
+			}
+		})
 	}
 }
 
