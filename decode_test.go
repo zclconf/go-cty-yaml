@@ -14,6 +14,34 @@ func TestUnmarshal(t *testing.T) {
 		want      cty.Value
 		wantErr   string
 	}{
+		"only document separator": {
+			Standard,
+			`---`,
+			cty.String,
+			cty.NullVal(cty.String),
+			``,
+		},
+		"null": {
+			Standard,
+			`~`,
+			cty.String,
+			cty.NullVal(cty.String),
+			``,
+		},
+		"one document separator followed by value": {
+			Standard,
+			"---\ntrue",
+			cty.Bool,
+			cty.True,
+			``,
+		},
+		"multiple documents": {
+			Standard,
+			"---\ntrue\n---\nfalse",
+			cty.Bool,
+			cty.DynamicVal,
+			`on line 2, column 1: unexpected extra content after value`,
+		},
 		"single string doublequote": {
 			Standard,
 			`"hello"`,
