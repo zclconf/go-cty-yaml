@@ -27,7 +27,7 @@ var integerLiteralRegexp = regexp.MustCompile(`` +
 	// start of string, optional sign, and one of:
 	`\A[-+]?(` +
 	// octal literal with 0o prefix and optional _ spaces
-	`|0o[0-7_]+` +
+	`0o[0-7_]+` +
 	// decimal literal and optional _ spaces
 	`|[0-9_]+` +
 	// hexadecimal literal with 0x prefix and optional _ spaces
