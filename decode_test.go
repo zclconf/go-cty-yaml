@@ -105,6 +105,13 @@ func TestUnmarshal(t *testing.T) {
 			cty.StringVal("hello"),
 			``,
 		},
+		"single string plus sign only": {
+			Standard,
+			`+`,
+			cty.String,
+			cty.StringVal("+"),
+			``,
+		},
 		"single string implied not merge": {
 			Standard,
 			`<<`,
