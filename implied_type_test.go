@@ -43,6 +43,12 @@ func TestImpliedType(t *testing.T) {
 			cty.String,
 			``,
 		},
+		"single string plus sign only": {
+			Standard,
+			`+`,
+			cty.String,
+			``,
+		},
 		"single string implied not merge": {
 			Standard,
 			`<<`,
