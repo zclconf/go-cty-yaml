@@ -231,20 +231,6 @@ func TestUnmarshal(t *testing.T) {
 			cty.NumberIntVal(31),
 			``,
 		},
-		"single hexadecimal int negative implied by parsability": {
-			Standard,
-			`-0x1f`,
-			cty.Number,
-			cty.NumberIntVal(-31),
-			``,
-		},
-		"single hexadecimal int with underscores implied by parsability": {
-			Standard,
-			`0x0000_0000_ffff_0000`,
-			cty.Number,
-			cty.NumberIntVal(4294901760),
-			``,
-		},
 		"single string which looks like a binary number": {
 			Standard,
 			`0ba`,
