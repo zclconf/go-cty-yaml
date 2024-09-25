@@ -70,7 +70,33 @@ func (c *Converter) unmarshalParse(an *valueAnalysis, p *yaml_parser_t) (cty.Val
 	return c.unmarshalParseRemainder(an, &evt, p)
 }
 
+const (
+	// 400,000 decode operations is ~500kb of dense object declarations, or ~5kb of dense object declarations with 10000% alias expansion
+	alias_ratio_range_low = 400000
+	// 4,000,000 decode operations is ~5MB of dense object declarations, or ~4.5MB of dense object declarations with 10% alias expansion
+	alias_ratio_range_high = 4000000
+	// alias_ratio_range is the range over which we scale allowed alias ratios
+	alias_ratio_range = float64(alias_ratio_range_high - alias_ratio_range_low)
+)
+
+func allowedAliasRatio(decodeCount int) float64 {
+	switch {
+	case decodeCount <= alias_ratio_range_low:
+		// allow 99% to come from alias expansion for small-to-medium documents
+		return 0.99
+	case decodeCount >= alias_ratio_range_high:
+		// allow 10% to come from alias expansion for very large documents
+		return 0.10
+	default:
+		// scale smoothly from 99% down to 10% over the range.
+		// this maps to 396,000 - 400,000 allowed alias-driven decodes over the range.
+		// 400,000 decode operations is ~100MB of allocations in worst-case scenarios (single-item maps).
+		return 0.99 - 0.89*(float64(decodeCount-alias_ratio_range_low)/alias_ratio_range)
+	}
+}
+
 func (c *Converter) unmarshalParseRemainder(an *valueAnalysis, evt *yaml_event_t, p *yaml_parser_t) (cty.Value, error) {
+	c.decodeCount++
 	switch evt.typ {
 	case yaml_SCALAR_EVENT:
 		return c.unmarshalScalar(an, evt, p)
@@ -222,6 +248,10 @@ func (c *Converter) unmarshalSequence(an *valueAnalysis, evt *yaml_event_t, p *y
 }
 
 func (c *Converter) unmarshalAlias(an *valueAnalysis, evt *yaml_event_t, p *yaml_parser_t) (cty.Value, error) {
+	c.aliasCount++
+	if c.aliasCount > 100 && c.decodeCount > 1000 && float64(c.aliasCount)/float64(c.decodeCount) > allowedAliasRatio(c.decodeCount) {
+		failf("document contains excessive aliasing")
+	}
 	v, err := an.anchorVal(string(evt.anchor))
 	if err != nil {
 		err = parseEventErrorWrap(evt, err)
