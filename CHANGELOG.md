@@ -1,3 +1,8 @@
+# Unreleased
+
+* The YAML decoder now exactly follows the [YAML specification](https://yaml.org/spec/1.2-old/spec.html#id2805071) when parsing integers.
+  **Note:** This removes support for `_` spaces as well as signed base8 and base16 values.
+
 # 1.0.3 (November 2, 2022)
 
 * The `YAMLDecodeFunc` cty function now correctly handles both entirely empty
