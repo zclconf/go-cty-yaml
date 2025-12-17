@@ -24,6 +24,83 @@ func TestYAMLDecodeFunc(t *testing.T) {
 			`true`,
 			cty.True,
 		},
+		"simple merge": {
+			`
+a: aa
+<<:
+  b: bb
+  c: cc
+d: dd
+`,
+			cty.ObjectVal(map[string]cty.Value{
+				"a": cty.StringVal("aa"),
+				"b": cty.StringVal("bb"),
+				"c": cty.StringVal("cc"),
+				"d": cty.StringVal("dd"),
+			}),
+		},
+		"merge with conflicting keys": {
+			`
+a: aa
+<<:
+  a: aaa
+<<:
+  b: bbb
+b: bb
+`,
+			cty.ObjectVal(map[string]cty.Value{
+				"a": cty.StringVal("aaa"),
+				"b": cty.StringVal("bb"),
+			}),
+		},
+		"merge sequence of mappings": {
+			`
+a: aa
+<<:
+  - b: bb
+  - c: cc
+d: dd
+`,
+			cty.ObjectVal(map[string]cty.Value{
+				"a": cty.StringVal("aa"),
+				"b": cty.StringVal("bb"),
+				"c": cty.StringVal("cc"),
+				"d": cty.StringVal("dd"),
+			}),
+		},
+		"merge by reference": {
+			`
+a: &foo
+  beep: boop
+b:
+  <<: *foo
+  bleep: bloop
+`,
+			cty.ObjectVal(map[string]cty.Value{
+				"a": cty.ObjectVal(map[string]cty.Value{
+					"beep": cty.StringVal("boop"),
+				}),
+				"b": cty.ObjectVal(map[string]cty.Value{
+					"beep":  cty.StringVal("boop"),
+					"bleep": cty.StringVal("bloop"),
+				}),
+			}),
+		},
+		"merge by explicit tag": {
+			`
+a: aa
+!!merge doesnt-matter-what-is-here:
+  b: bb
+  c: cc
+d: dd
+`,
+			cty.ObjectVal(map[string]cty.Value{
+				"a": cty.StringVal("aa"),
+				"b": cty.StringVal("bb"),
+				"c": cty.StringVal("cc"),
+				"d": cty.StringVal("dd"),
+			}),
+		},
 	}
 
 	for name, test := range tests {

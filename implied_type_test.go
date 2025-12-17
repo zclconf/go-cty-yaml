@@ -323,6 +323,118 @@ bar:
 			}),
 			``,
 		},
+
+		"simple merge": {
+			Standard,
+			`
+a: aa
+<<:
+  b: bb
+  c: cc
+d: dd
+`,
+			cty.Object(map[string]cty.Type{
+				"a": cty.String,
+				"b": cty.String,
+				"c": cty.String,
+				"d": cty.String,
+			}),
+			``,
+		},
+		"merge with conflicting keys": {
+			Standard,
+			`
+a: aa
+<<:
+  a: aaa
+<<:
+  b: bbb
+b: bb
+`,
+			cty.Object(map[string]cty.Type{
+				"a": cty.String,
+				"b": cty.String,
+			}),
+			``,
+		},
+		"merge sequence of mappings": {
+			Standard,
+			`
+a: aa
+<<:
+  - b: bb
+  - c: cc
+d: dd
+`,
+			cty.Object(map[string]cty.Type{
+				"a": cty.String,
+				"b": cty.String,
+				"c": cty.String,
+				"d": cty.String,
+			}),
+			``,
+		},
+		"merge sequence with scalar": {
+			Standard,
+			`
+a: aa
+<<:
+  - b: bb
+  - uh-oh
+d: dd
+`,
+			cty.NilType,
+			`on line 2, column 1: cannot merge string (from sequence) into mapping`,
+		},
+		"merge sequence with sequence": {
+			Standard,
+			`
+a: aa
+<<:
+  - b: bb
+  - []
+d: dd
+`,
+			cty.NilType,
+			`on line 2, column 1: cannot merge tuple (from sequence) into mapping`,
+		},
+		"merge by reference": {
+			Standard,
+			`
+a: &foo
+  beep: boop
+b:
+  <<: *foo
+  bleep: bloop
+`,
+			cty.Object(map[string]cty.Type{
+				"a": cty.Object(map[string]cty.Type{
+					"beep": cty.String,
+				}),
+				"b": cty.Object(map[string]cty.Type{
+					"beep":  cty.String,
+					"bleep": cty.String,
+				}),
+			}),
+			``,
+		},
+		"merge by explicit tag": {
+			Standard,
+			`
+a: aa
+!!merge doesnt-matter-what-is-here:
+  b: bb
+  c: cc
+d: dd
+`,
+			cty.Object(map[string]cty.Type{
+				"a": cty.String,
+				"b": cty.String,
+				"c": cty.String,
+				"d": cty.String,
+			}),
+			``,
+		},
 	}
 
 	for name, test := range tests {

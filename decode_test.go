@@ -497,6 +497,125 @@ bar:
 			}),
 			``,
 		},
+
+		"simple merge": {
+			Standard,
+			`
+a: aa
+<<:
+  b: bb
+  c: cc
+d: dd
+`,
+			cty.Object(map[string]cty.Type{
+				"a": cty.String,
+				"b": cty.String,
+				"c": cty.String,
+				"d": cty.String,
+			}),
+			cty.ObjectVal(map[string]cty.Value{
+				"a": cty.StringVal("aa"),
+				"b": cty.StringVal("bb"),
+				"c": cty.StringVal("cc"),
+				"d": cty.StringVal("dd"),
+			}),
+			``,
+		},
+		"merge with conflicting keys": {
+			Standard,
+			`
+a: aa
+<<:
+  a: aaa
+<<:
+  b: bbb
+b: bb
+`,
+			cty.Object(map[string]cty.Type{
+				"a": cty.String,
+				"b": cty.String,
+			}),
+			cty.ObjectVal(map[string]cty.Value{
+				"a": cty.StringVal("aaa"),
+				"b": cty.StringVal("bb"),
+			}),
+			``,
+		},
+		"merge sequence of mappings": {
+			Standard,
+			`
+a: aa
+<<:
+  - b: bb
+  - c: cc
+d: dd
+`,
+			cty.Object(map[string]cty.Type{
+				"a": cty.String,
+				"b": cty.String,
+				"c": cty.String,
+				"d": cty.String,
+			}),
+			cty.ObjectVal(map[string]cty.Value{
+				"a": cty.StringVal("aa"),
+				"b": cty.StringVal("bb"),
+				"c": cty.StringVal("cc"),
+				"d": cty.StringVal("dd"),
+			}),
+			``,
+		},
+		"merge by reference": {
+			Standard,
+			`
+a: &foo
+  beep: boop
+b:
+  <<: *foo
+  bleep: bloop
+`,
+			cty.Object(map[string]cty.Type{
+				"a": cty.Object(map[string]cty.Type{
+					"beep": cty.String,
+				}),
+				"b": cty.Object(map[string]cty.Type{
+					"beep":  cty.String,
+					"bleep": cty.String,
+				}),
+			}),
+			cty.ObjectVal(map[string]cty.Value{
+				"a": cty.ObjectVal(map[string]cty.Value{
+					"beep": cty.StringVal("boop"),
+				}),
+				"b": cty.ObjectVal(map[string]cty.Value{
+					"beep":  cty.StringVal("boop"),
+					"bleep": cty.StringVal("bloop"),
+				}),
+			}),
+			``,
+		},
+		"merge by explicit tag": {
+			Standard,
+			`
+a: aa
+!!merge doesnt-matter-what-is-here:
+  b: bb
+  c: cc
+d: dd
+`,
+			cty.Object(map[string]cty.Type{
+				"a": cty.String,
+				"b": cty.String,
+				"c": cty.String,
+				"d": cty.String,
+			}),
+			cty.ObjectVal(map[string]cty.Value{
+				"a": cty.StringVal("aa"),
+				"b": cty.StringVal("bb"),
+				"c": cty.StringVal("cc"),
+				"d": cty.StringVal("dd"),
+			}),
+			``,
+		},
 	}
 
 	for name, test := range tests {
