@@ -1029,7 +1029,7 @@ func yaml_parser_process_directives(parser *yaml_parser_t,
 					"found duplicate %YAML directive", token.start_mark)
 				return false
 			}
-			if token.major != 1 || token.minor != 1 {
+			if !(token.major == 1 && (token.minor == 1 || token.minor == 2)) {
 				yaml_parser_set_parser_error(parser,
 					"found incompatible YAML document", token.start_mark)
 				return false
