@@ -21,6 +21,8 @@ type ConverterConfig struct {
 // converter in Standard should be good enough.
 type Converter struct {
 	encodeAsFlow bool
+	decodeCount  int
+	aliasCount   int
 }
 
 // NewConverter creates a new Converter with the given configuration.
