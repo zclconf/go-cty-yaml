@@ -35,6 +35,20 @@ func TestUnmarshal(t *testing.T) {
 			cty.True,
 			``,
 		},
+		"YAML 1.1 directive": {
+			Standard,
+			"%YAML 1.1\n---\ntrue",
+			cty.Bool,
+			cty.True,
+			``,
+		},
+		"YAML 1.2 directive": {
+			Standard,
+			"%YAML 1.2\n---\ntrue",
+			cty.Bool,
+			cty.True,
+			``,
+		},
 		"multiple documents": {
 			Standard,
 			"---\ntrue\n---\nfalse",
