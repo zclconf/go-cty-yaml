@@ -910,7 +910,7 @@ func yaml_emitter_process_scalar(emitter *yaml_emitter_t) bool {
 
 // Check if a %YAML directive is valid.
 func yaml_emitter_analyze_version_directive(emitter *yaml_emitter_t, version_directive *yaml_version_directive_t) bool {
-	if version_directive.major != 1 || version_directive.minor != 1 {
+	if !(version_directive.major == 1 && (version_directive.minor == 1 || version_directive.minor == 2)) {
 		return yaml_emitter_set_emitter_error(emitter, "incompatible %YAML directive")
 	}
 	return true
